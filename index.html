@@ -226,6 +226,7 @@
                             </div>
                             <div>
                                 <button class="btn btn-primary" onclick="renderOverview()">Refresh</button>
+                                <button class="btn btn-outline" onclick="clearAllData()" style="margin-left:.5rem">Reset Data</button>
                             </div>
                         </div>
                     </div>
@@ -669,111 +670,142 @@
         let currentTest = null;
         let testTimer = null;
         let timeRemaining = 0;
-        let timeExpired = false; // flag when allotted time has elapsed and we've auto-submitted
-        let editingQuestionId = null; // null => creating new, otherwise editing question id
-        let editingStudentId = null; // used to indicate we're editing (stores current student's original id while in modal)
-        let editingStudentOriginalId = null; // stores original student id before edit (so admin can change username)
-        let overviewChart = null; // Chart.js instance for overview
+        let timeExpired = false;
+        let editingQuestionId = null;
+        let editingStudentId = null;
+        let editingStudentOriginalId = null;
+        let overviewChart = null;
 
-        // Data storage (in-memory for demo)
+        // Data storage (in-memory for demo). This will be loaded from localStorage if available.
         let data = {
             tests: [],
             students: [],
             questions: [],
             submissions: [],
             reviews: [],
-            categories: [] // dynamic categories
+            categories: []
         };
 
-        // Initialize with sample data
-        function initializeData(){
-            // Sample categories
+        const STORAGE_KEY = 'tms_demo_data_v1';
+
+        // Save current in-memory data to localStorage
+        function saveData(){
+            try {
+                // Convert Date objects (e.g., submittedAt) to ISO strings
+                const clone = JSON.parse(JSON.stringify(data, (k, v) => {
+                    if (v instanceof Date) return v.toISOString();
+                    return v;
+                }));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(clone));
+            } catch(e){
+                console.error('Failed to save data to localStorage', e);
+            }
+        }
+
+        // Load data from localStorage; returns true if loaded, false otherwise
+        function loadData(){
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if(!raw) return false;
+                const parsed = JSON.parse(raw);
+                // assign parsed values into data
+                data.tests = parsed.tests || [];
+                data.students = parsed.students || [];
+                data.questions = parsed.questions || [];
+                data.submissions = (parsed.submissions || []).map(s => {
+                    // convert submittedAt to Date if it's a string
+                    if(s && s.submittedAt && typeof s.submittedAt === 'string'){
+                        s.submittedAt = new Date(s.submittedAt);
+                    }
+                    return s;
+                });
+                data.reviews = parsed.reviews || [];
+                data.categories = parsed.categories || [];
+                return true;
+            } catch(e){
+                console.error('Failed to load data from localStorage', e);
+                return false;
+            }
+        }
+
+        // Clear all demo data (also from localStorage). Useful when testing.
+        function clearAllData(){
+            if(!confirm('This will erase all saved demo data (tests, students, questions, submissions). Continue?')) return;
+            localStorage.removeItem(STORAGE_KEY);
+            // reset in-memory
+            data = { tests:[], students:[], questions:[], submissions:[], reviews:[], categories:[] };
+            // re-seed initial sample so UI isn't empty
+            seedData();
+            saveData();
+            updateDashboardStats();
+            renderAll();
+            alert('Demo data reset.');
+        }
+
+        // Seed initial sample data (only called if no saved data)
+        function seedData(){
             data.categories = ['Database','Networking','Programming','Spreadsheet','Computer Organization'];
 
-            // Sample questions
             data.questions = [
-                {
-                    id:1,
-                    type:`multiple-choice`,
-                    text:`What does SQL stand for?`,
-                    options:[`Structured Query Language`,`Simple Query Language`,`Standard Query Language`,`System Query Language`],
-                    correctAnswer:`A`,
-                    categories:[`Database`]
-                },
-                {
-                    id:2,
-                    type:`multiple-choice`,
-                    text:`Which protocol is used for secure web communication?`,
-                    options:[`HTTP`,`HTTPS`,`FTP`,`SMTP`],
-                    correctAnswer:`B`,
-                    categories:[`Networking`]
-                },
-                {
-                    id:3,
-                    type:`long-answer`,
-                    text:`Explain the concept of normalization in databases and its benefits.`,
-                    categories:[`Database`]
-                },
-                {
-                    id:4,
-                    type:`multiple-choice`,
-                    text:`What is the time complexity of binary search?`,
-                    options:[`O(n)`,`O(log n)`,`O(n²)`,`O(1)`],
-                    correctAnswer:`B`,
-                    categories:[`Programming`]
-                },
-                {
-                    id:5,
-                    type:`long-answer`,
-                    text:`Describe the OSI model and explain each layer briefly.`,
-                    categories:[`Networking`]
-                }
+                { id:1, type:'multiple-choice', text:'What does SQL stand for?', options:['Structured Query Language','Simple Query Language','Standard Query Language','System Query Language'], correctAnswer:'A', categories:['Database'] },
+                { id:2, type:'multiple-choice', text:'Which protocol is used for secure web communication?', options:['HTTP','HTTPS','FTP','SMTP'], correctAnswer:'B', categories:['Networking'] },
+                { id:3, type:'long-answer', text:'Explain the concept of normalization in databases and its benefits.', categories:['Database'] },
+                { id:4, type:'multiple-choice', text:'What is the time complexity of binary search?', options:['O(n)','O(log n)','O(n²)','O(1)'], correctAnswer:'B', categories:['Programming'] },
+                { id:5, type:'long-answer', text:'Describe the OSI model and explain each layer briefly.', categories:['Networking'] }
             ];
 
-            // Sample students
             data.students = [
-                {id:`student1`,name:`John Smith`,password:`pass123`},
-                {id:`student2`,name:`Jane Doe`,password:`pass123`},
-                {id:`student3`,name:`Mike Johnson`,password:`pass123`}
+                {id:'student1',name:'John Smith',password:'pass123'},
+                {id:'student2',name:'Jane Doe',password:'pass123'},
+                {id:'student3',name:'Mike Johnson',password:'pass123'}
             ];
 
-            // (optional) sample submissions to show overview functionality — you can remove or edit these
-            // Example: student1 submitted test A, student2 submitted test A and B
-            // We'll leave submissions empty initially; create tests and submit to see live chart.
+            data.tests = []; // leave tests empty so admin creates tests in demo
 
+            data.submissions = []; // no submissions by default
+            data.reviews = [];
+        }
+
+        // Initialize (load from storage or seed and save)
+        function initializeApp(){
+            const loaded = loadData();
+            if(!loaded){
+                seedData();
+                saveData();
+            }
             updateDashboardStats();
             renderCategoryOptions();
             renderCategoriesPanel();
         }
 
-        // Login & UI helpers
+        // UI helpers (unchanged from earlier code)
         function switchLoginTab(tab){
             document.querySelectorAll(`.tab`).forEach(t=>t.classList.remove(`active`));
             document.querySelectorAll(`.tab-content`).forEach(t=>t.classList.remove(`active`));
-            if(tab===`admin`){
-                document.querySelector(`#adminLogin`).classList.add(`active`);
-                document.querySelector(`.tab:first-child`).classList.add(`active`);
+            if(tab==='admin'){
+                document.querySelector('#adminLogin').classList.add('active');
+                document.querySelector('.tab:first-child').classList.add('active');
             } else {
-                document.querySelector(`#studentLogin`).classList.add(`active`);
-                document.querySelector(`.tab:last-child`).classList.add(`active`);
+                document.querySelector('#studentLogin').classList.add('active');
+                document.querySelector('.tab:last-child').classList.add('active');
             }
         }
 
         function login(type,event){
             event.preventDefault();
             const form = event.target;
-            const username = form.querySelector(`input[type="text"]`).value;
-            const password = form.querySelector(`input[type="password"]`).value;
-            if(type===`admin`){
-                if(username===`admin` && password===`admin123`){
-                    currentUser = {id:`admin`,name:`Administrator`};
-                    currentUserType = `admin`;
+            const username = form.querySelector('input[type="text"]').value;
+            const password = form.querySelector('input[type="password"]').value;
+            if(type==='admin'){
+                if(username==='admin' && password==='admin123'){
+                    currentUser = {id:'admin',name:'Administrator'};
+                    currentUserType = 'admin';
                     showAdminDashboard();
-                } else { alert(`Invalid admin credentials`); }
+                } else { alert('Invalid admin credentials'); }
             } else {
                 const student = data.students.find(s=>s.id===username && s.password===password);
-                if(student){ currentUser = student; currentUserType = `student`; showStudentDashboard(); }
-                else { alert(`Invalid student credentials`); }
+                if(student){ currentUser = student; currentUserType = 'student'; showStudentDashboard(); }
+                else { alert('Invalid student credentials'); }
             }
         }
 
@@ -789,36 +821,34 @@
             showLoginScreen();
         }
 
-        function showLoginScreen(){ hideAllScreens(); document.getElementById(`loginScreen`).classList.remove(`hidden`) }
-        function showAdminDashboard(){ hideAllScreens(); document.getElementById(`adminDashboard`).classList.remove(`hidden`); updateDashboardStats(); renderOverview(); renderTestsTable(); renderStudentsTable(); renderQuestionsTable(); renderReviewsContainer(); renderCategoriesPanel(); renderCategoryOptions(); }
-        function showStudentDashboard(){ hideAllScreens(); document.getElementById(`studentDashboard`).classList.remove(`hidden`); document.getElementById(`studentWelcome`).textContent = `Welcome, ${currentUser.name}`; renderStudentTestsTable(); }
-        function showTestInterface(){ hideAllScreens(); document.getElementById(`testInterface`).classList.remove(`hidden`) }
-        function showReviewInterface(){ hideAllScreens(); document.getElementById(`reviewInterface`).classList.remove(`hidden`) }
-        function hideAllScreens(){ ['loginScreen','adminDashboard','studentDashboard','testInterface','reviewInterface'].forEach(id => document.getElementById(id).classList.add('hidden')) }
+        function showLoginScreen(){ hideAllScreens(); document.getElementById('loginScreen').classList.remove('hidden'); }
+        function showAdminDashboard(){ hideAllScreens(); document.getElementById('adminDashboard').classList.remove('hidden'); updateDashboardStats(); renderOverview(); renderTestsTable(); renderStudentsTable(); renderQuestionsTable(); renderReviewsContainer(); renderCategoriesPanel(); renderCategoryOptions(); }
+        function showStudentDashboard(){ hideAllScreens(); document.getElementById('studentDashboard').classList.remove('hidden'); document.getElementById('studentWelcome').textContent = `Welcome, ${currentUser.name}`; renderStudentTestsTable(); }
+        function showTestInterface(){ hideAllScreens(); document.getElementById('testInterface').classList.remove('hidden'); }
+        function showReviewInterface(){ hideAllScreens(); document.getElementById('reviewInterface').classList.remove('hidden'); }
+        function hideAllScreens(){ ['loginScreen','adminDashboard','studentDashboard','testInterface','reviewInterface'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
         function backToStudentDashboard(){ showStudentDashboard(); }
 
         function switchAdminTab(tab){
-            document.querySelectorAll(`#adminDashboard .tab`).forEach(t=>t.classList.remove(`active`));
-            document.querySelectorAll(`#adminDashboard .tab-content`).forEach(t=>t.classList.remove(`active`));
-            const tabs = Array.from(document.querySelectorAll(`#adminDashboard .tab`));
+            document.querySelectorAll('#adminDashboard .tab').forEach(t=>t.classList.remove('active'));
+            document.querySelectorAll('#adminDashboard .tab-content').forEach(t=>t.classList.remove('active'));
+            const tabs = Array.from(document.querySelectorAll('#adminDashboard .tab'));
             tabs.forEach(t => { if (t.getAttribute('onclick') && t.getAttribute('onclick').includes(tab)) t.classList.add('active'); });
-            document.getElementById(`${tab}Tab`)?.classList.add(`active`);
-            if(tab===`tests`) renderTestsTable();
-            else if(tab===`students`) renderStudentsTable();
-            else if(tab===`reviews`) renderReviewsContainer();
-            else if(tab===`questions`) renderQuestionsTable();
-            else if(tab===`overview`) renderOverview();
+            document.getElementById(`${tab}Tab`)?.classList.add('active');
+            if(tab==='tests') renderTestsTable();
+            else if(tab==='students') renderStudentsTable();
+            else if(tab==='reviews') renderReviewsContainer();
+            else if(tab==='questions') renderQuestionsTable();
+            else if(tab==='overview') renderOverview();
         }
 
         // Dashboard stats
         function updateDashboardStats(){
-            document.getElementById(`totalTests`).textContent = data.tests.length;
-            document.getElementById(`totalStudents`).textContent = data.students.length;
-            document.getElementById(`totalQuestions`).textContent = data.questions.length;
-            const pendingReviews = data.submissions.filter(s => s.answers.some(a => a.type===`long-answer` && !a.reviewed)).length;
-            document.getElementById(`pendingReviews`).textContent = pendingReviews;
-
-            // update overview mini-stats if present
+            document.getElementById('totalTests').textContent = data.tests.length;
+            document.getElementById('totalStudents').textContent = data.students.length;
+            document.getElementById('totalQuestions').textContent = data.questions.length;
+            const pendingReviews = data.submissions.filter(s => s.answers.some(a => a.type==='long-answer' && !a.reviewed)).length;
+            document.getElementById('pendingReviews').textContent = pendingReviews;
             const ovTests = document.getElementById('ov-totalTests');
             if(ovTests) ovTests.textContent = data.tests.length;
             const ovStudents = document.getElementById('ov-totalStudents');
@@ -830,10 +860,9 @@
         }
 
         // Modal helpers
-        function openModal(id){ document.getElementById(id).classList.add(`show`) }
-        function closeModal(id){ 
-            document.getElementById(id).classList.remove(`show`);
-            // If closing student modal, ensure editing state reset
+        function openModal(id){ document.getElementById(id).classList.add('show'); }
+        function closeModal(id){
+            document.getElementById(id).classList.remove('show');
             if(id === 'studentModal'){
                 editingStudentId = null;
                 editingStudentOriginalId = null;
@@ -847,33 +876,25 @@
         // ============================
         // Overview chart (ATTEMPTS PER TEST)
         // ============================
-        // Renders a bar chart showing how many unique students attempted each test.
         function renderOverview(){
-            updateDashboardStats(); // keep numbers in sync
+            updateDashboardStats();
             const canvas = document.getElementById('overviewChartCanvas');
             if(!canvas) return;
             const ctx = canvas.getContext('2d');
 
-            // Build labels (test names) and values (unique student attempts)
             const labels = data.tests.map(t => t.name || `Test ${t.id}`);
             const values = data.tests.map(t => {
-                // Count unique studentIds that have a submission for this test
                 const subs = data.submissions.filter(s => s.testId === t.id);
                 const uniqueStudents = Array.from(new Set(subs.map(s => s.studentId)));
                 return uniqueStudents.length;
             });
 
-            // Provide a fallback if no tests exist
             if(labels.length === 0){
-                // If Chart.js not loaded, show fallback; otherwise clear/draw empty chart
                 if(typeof Chart === 'undefined'){
                     canvas.parentElement.innerHTML = `<div style="padding:1rem;background:var(--card-background);border-radius:.25rem;border:1px solid var(--border-color)">Chart library not loaded. Create tests and perform submissions to see attempts per test here.</div>`;
                     return;
                 } else {
-                    if(overviewChart){
-                        try{ overviewChart.destroy(); }catch(e){}
-                        overviewChart = null;
-                    }
+                    if(overviewChart){ try{ overviewChart.destroy(); }catch(e){} overviewChart = null; }
                     overviewChart = new Chart(ctx, {
                         type: 'bar',
                         data: { labels: ['No tests yet'], datasets: [{ data: [0], backgroundColor: ['#94a3b8'] }] },
@@ -883,23 +904,17 @@
                 }
             }
 
-            // Colors
             const bgColors = labels.map((_, i) => {
-                // rotate through palette
                 const palette = ['#2563eb','#10b981','#f59e0b','#ef4444','#7c3aed','#06b6d4','#f97316'];
                 return palette[i % palette.length];
             });
 
-            // Ensure Chart.js is available
             if(typeof Chart === 'undefined'){
                 canvas.parentElement.innerHTML = `<div style="padding:1rem;background:var(--card-background);border-radius:.25rem;border:1px solid var(--border-color)">Chart library not loaded. Counts: ${labels.map((l,i)=>`${l}: ${values[i]}`).join(' | ')}</div>`;
                 return;
             }
 
-            if(overviewChart){
-                try { overviewChart.destroy(); } catch(e){ /* ignore */ }
-                overviewChart = null;
-            }
+            if(overviewChart){ try { overviewChart.destroy(); } catch(e){} overviewChart = null; }
 
             overviewChart = new Chart(ctx, {
                 type: 'bar',
@@ -927,7 +942,6 @@
                 }
             });
 
-            // update small stat cards
             updateDashboardStats();
         }
 
@@ -963,6 +977,7 @@
             input.value = '';
             renderCategoryOptions();
             renderCategoriesPanel();
+            saveData();
         }
 
         function deleteCategory(cat){
@@ -976,11 +991,11 @@
             renderCategoryOptions();
             renderCategoriesPanel();
             renderQuestionsTable();
-            renderQuestionSelection(); // update modal question list
+            renderQuestionSelection();
             updateDashboardStats();
+            saveData();
         }
 
-        // Utility to escape text for HTML insertion
         function escapeHtml(str){
             return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
         }
@@ -1042,7 +1057,7 @@
         }
 
         function saveTest(){
-            const name = document.getElementById('testName').value;
+            const name = document.getElementById('testName').value.trim();
             const duration = parseInt(document.getElementById('testDuration').value);
             const selectedQuestions = Array.from(document.querySelectorAll('#questionSelection input[type="checkbox"]:checked')).map(cb => parseInt(cb.value));
             if(!name || !duration || selectedQuestions.length===0){ alert('Please fill all fields and select at least one question'); return; }
@@ -1050,7 +1065,11 @@
                 id: Date.now(),
                 name,
                 duration,
-                questions: selectedQuestions.map(id => data.questions.find(q => q.id === id)),
+                questions: selectedQuestions.map(id => {
+                    // store a copy of the question object at creation time
+                    const q = data.questions.find(q => q.id === id);
+                    return q ? JSON.parse(JSON.stringify(q)) : null;
+                }).filter(Boolean),
                 assignedStudents: [],
                 createdAt: new Date()
             };
@@ -1058,7 +1077,8 @@
             closeModal('testModal');
             renderTestsTable();
             updateDashboardStats();
-            renderOverview(); // update chart as tests changed
+            saveData();
+            renderOverview();
         }
 
         function renderTestsTable(){
@@ -1118,20 +1138,24 @@
             currentTest.assignedStudents = selectedStudents;
             closeModal('assignTestModal');
             renderTestsTable();
+            saveData();
+            renderOverview();
         }
 
         function deleteTest(testId){
             if(!confirm('Are you sure you want to delete this test?')) return;
             data.tests = data.tests.filter(t=>t.id!==testId);
+            // remove related submissions
+            data.submissions = data.submissions.filter(s=>s.testId !== testId);
             renderTestsTable();
             updateDashboardStats();
+            saveData();
             renderOverview();
         }
 
         // ============================
         // Students management (create & modify)
         // ============================
-        // openStudentModal: if studentId provided => edit mode, otherwise create mode
         function openStudentModal(studentId){
             editingStudentId = null;
             editingStudentOriginalId = null;
@@ -1143,20 +1167,17 @@
             const saveBtn = document.getElementById('studentModalSaveBtn');
 
             if(studentId){
-                // edit existing student
                 const student = data.students.find(s => s.id === studentId);
                 if(!student){ alert('Student not found'); return; }
                 editingStudentId = student.id;
-                editingStudentOriginalId = student.id; // keep original to update references if changed
+                editingStudentOriginalId = student.id;
                 idInput.value = student.id;
                 nameInput.value = student.name;
                 passInput.value = student.password;
-                // allow admin to change the ID (username)
                 idInput.readOnly = false;
                 titleEl.textContent = 'Edit Student';
                 saveBtn.textContent = 'Save Changes';
             } else {
-                // create new student
                 editingStudentId = null;
                 editingStudentOriginalId = null;
                 idInput.readOnly = false;
@@ -1167,20 +1188,14 @@
             openModal('studentModal');
         }
 
-        // Helper to update references when student id (username) changes:
-        // - update submissions: studentId
-        // - update tests.assignedStudents arrays
         function updateStudentIdReferences(oldId, newId){
-            // update submissions
             data.submissions.forEach(s => {
-                if(s.studentId === oldId){
-                    s.studentId = newId;
-                }
+                if(s.studentId === oldId) s.studentId = newId;
             });
-            // update assignments in tests
             data.tests.forEach(test => {
                 test.assignedStudents = test.assignedStudents.map(id => id === oldId ? newId : id);
             });
+            saveData();
         }
 
         function saveStudent(){
@@ -1195,40 +1210,27 @@
             if(!id || !name || !password){ alert('Please fill all fields'); return; }
 
             if(editingStudentId){
-                // editing existing student
                 const student = data.students.find(s => s.id === editingStudentOriginalId);
                 if(!student){ alert('Student not found'); return; }
-
-                // if ID changed, ensure new ID not already used by another student
                 if(editingStudentOriginalId !== id){
-                    if(data.students.find(s => s.id === id)){
-                        alert('Student ID already exists. Choose a different ID.');
-                        return;
-                    }
-                    // update the student's id and references
+                    if(data.students.find(s => s.id === id)){ alert('Student ID already exists. Choose a different ID.'); return; }
                     student.id = id;
                     updateStudentIdReferences(editingStudentOriginalId, id);
                 }
-
-                // update other fields
                 student.name = name;
                 student.password = password;
-
-                alert('Student updated successfully (including ID changes).');
             } else {
-                // create new student
                 if(data.students.find(s => s.id === id)){ alert('Student ID already exists'); return; }
                 data.students.push({id,name,password});
-                alert('Student added successfully');
             }
 
-            // Reset modal editing state
             editingStudentId = null;
             editingStudentOriginalId = null;
             idInput.readOnly = false;
             closeModal('studentModal');
             renderStudentsTable();
             updateDashboardStats();
+            saveData();
             renderOverview();
         }
 
@@ -1267,6 +1269,7 @@
         function resetStudent(studentId){
             if(confirm('Reset all test submissions for this student?')){
                 data.submissions = data.submissions.filter(s => s.studentId !== studentId);
+                saveData();
                 alert('Student submissions reset successfully');
                 updateDashboardStats();
                 renderOverview();
@@ -1280,11 +1283,12 @@
             data.tests.forEach(test => { test.assignedStudents = test.assignedStudents.filter(id => id !== studentId); });
             renderStudentsTable();
             updateDashboardStats();
+            saveData();
             renderOverview();
         }
 
         // ============================
-        // Question management (create / edit / delete)
+        // Question management
         // ============================
         function openQuestionModal(questionId){
             editingQuestionId = null;
@@ -1374,6 +1378,7 @@
             renderCategoriesPanel();
             renderCategoryOptions();
             updateDashboardStats();
+            saveData();
         }
 
         function renderQuestionsTable(){
@@ -1412,9 +1417,14 @@
         function deleteQuestion(questionId){
             if(!confirm('Are you sure you want to delete this question?')) return;
             data.questions = data.questions.filter(q => q.id !== questionId);
+            // Also remove from tests (if tests store copies of questions)
+            data.tests.forEach(test => {
+                test.questions = test.questions.filter(q => q.id !== questionId);
+            });
             renderQuestionsTable();
             renderQuestionSelection();
             updateDashboardStats();
+            saveData();
         }
 
         // ============================
@@ -1432,7 +1442,7 @@
                 const longAnswers = submission.answers.filter(a => a.type==='long-answer' && !a.reviewed);
                 return `
                     <div class="card" style="margin-bottom:1.5rem">
-                        <div class="card-header"><div class="card-title">${escapeHtml(test.name)} - ${escapeHtml(student?.name || submission.studentId)}</div></div>
+                        <div class="card-header"><div class="card-title">${escapeHtml(test ? test.name : `Test ${submission.testId}`)} - ${escapeHtml(student?.name || submission.studentId)}</div></div>
                         <div class="card-body">
                             ${longAnswers.map((answer,index) => `
                                 <div class="question-container">
@@ -1466,6 +1476,7 @@
             answer.comment = comment;
             renderReviewsContainer();
             updateDashboardStats();
+            saveData();
         }
 
         // ============================
@@ -1478,7 +1489,6 @@
                 container.innerHTML = `<p style="text-align:center;color:var(--text-secondary)">No tests assigned to you yet.</p>`; return;
             }
 
-            // New: include Pending Reviews column to indicate number of long-answers pending review for this student
             container.innerHTML = `
                 <table class="table">
                     <thead><tr><th>Test Name</th><th>Duration</th><th>Questions</th><th>Pending Reviews</th><th>Status</th><th>Actions</th></tr></thead>
@@ -1486,7 +1496,6 @@
                         ${assignedTests.map(test => {
                             const submission = data.submissions.find(s => s.testId === test.id && s.studentId === currentUser.id);
                             const status = submission ? 'Completed' : 'Not Started';
-                            // count pending long answers (only if submitted)
                             const pending = submission ? submission.answers.filter(a => a.type === 'long-answer' && !a.reviewed).length : 0;
                             return `
                                 <tr>
@@ -1516,19 +1525,14 @@
             showTestInterface();
         }
 
-        // Render test questions grouped: Section A - MC, Section B - Long Answer
-        // When rendering we preserve original questionIndex values in input names so submission mapping still works.
         function renderTestQuestions(){
             const container = document.getElementById('testQuestions');
-
-            // build arrays with original indices
             const withIndex = currentTest.questions.map((q, idx) => ({ q, origIndex: idx }));
             const mc = withIndex.filter(x => x.q.type === 'multiple-choice');
             const long = withIndex.filter(x => x.q.type === 'long-answer');
 
             const htmlParts = [];
 
-            // Section A - MC
             if(mc.length > 0){
                 htmlParts.push(`<div style="margin-bottom:1rem"><strong>Section A — Multiple Choice</strong></div>`);
                 mc.forEach(({q, origIndex}, displayIdx) => {
@@ -1549,7 +1553,6 @@
                 });
             }
 
-            // Section B - Long answers
             if(long.length > 0){
                 htmlParts.push(`<div style="margin:1rem 0;"><strong>Section B — Long Answers</strong></div>`);
                 long.forEach(({q, origIndex}, displayIdx) => {
@@ -1564,33 +1567,22 @@
             }
 
             container.innerHTML = htmlParts.join('');
-            // ensure the submit button is visible/enabled
             const submitBtn = document.getElementById('submitTestBtn');
             if(submitBtn) submitBtn.disabled = false;
         }
 
         function selectRadio(groupName, radioId){
             const radio = document.getElementById(radioId);
-            if(radio){
-                radio.checked = true;
-            }
+            if(radio) radio.checked = true;
         }
 
-        // DISABLE or ENABLE inputs in the test (used when time runs out)
         function setTestInputsDisabled(disabled){
-            // radios
             const radios = document.querySelectorAll('#testQuestions input[type="radio"]');
             radios.forEach(r => r.disabled = disabled);
-            // textareas
             const areas = document.querySelectorAll('#testQuestions textarea');
             areas.forEach(t => t.readOnly = disabled);
-            // visually mark options
             const optionDivs = document.querySelectorAll('#testQuestions .option');
-            optionDivs.forEach(d => {
-                if(disabled) d.classList.add('disabled');
-                else d.classList.remove('disabled');
-            });
-            // disable submit button if inputs disabled (e.g., time-up auto-submit)
+            optionDivs.forEach(d => { if(disabled) d.classList.add('disabled'); else d.classList.remove('disabled'); });
             const submitBtn = document.getElementById('submitTestBtn');
             if(submitBtn) submitBtn.disabled = disabled;
         }
@@ -1602,7 +1594,6 @@
             testTimer = setInterval(() => {
                 timeRemaining--;
                 if(timeRemaining <= 0){
-                    // time's up: stop timer, disable inputs and auto-submit
                     clearInterval(testTimer);
                     testTimer = null;
                     timeRemaining = 0;
@@ -1610,9 +1601,7 @@
                     timerElement.classList.remove('warning');
                     timerElement.classList.add('expired');
                     timerTime.textContent = `Time's up`;
-                    // Immediately disable inputs to prevent further answers
                     setTestInputsDisabled(true);
-                    // Auto-submit without confirmation and notify student
                     submitTest(true);
                     return;
                 }
@@ -1626,26 +1615,16 @@
             const minutes = Math.floor(timeRemaining / 60);
             const seconds = timeRemaining % 60;
             timerTime.textContent = `${minutes}:${String(seconds).padStart(2,'0')}`;
-
-            if(timeRemaining <= 60){
-                timerElement.classList.add('warning');
-            } else {
-                timerElement.classList.remove('warning');
-                timerElement.classList.remove('expired');
-            }
+            if(timeRemaining <= 60) timerElement.classList.add('warning');
+            else { timerElement.classList.remove('warning'); timerElement.classList.remove('expired'); }
         }
 
-        // submitTest(autoSubmit: boolean) - if autoSubmit === true, bypass confirmation and treat as forced submission
         function submitTest(autoSubmit = false){
-            // if called manually and not auto, ask for confirmation
             if(!autoSubmit){
                 if(!confirm('Are you sure you want to submit the test? Once submitted you cannot change your answers.')) return;
             }
-
-            // stop timer if running
             if(testTimer){ clearInterval(testTimer); testTimer = null; }
 
-            // Collect answers based on original question indices
             const answers = currentTest.questions.map((question,index) => {
                 const answer = { questionIndex: index, question: question.text, type: question.type };
                 if(question.type === 'multiple-choice'){
@@ -1662,23 +1641,17 @@
 
             const submission = { id: Date.now(), testId: currentTest.id, studentId: currentUser.id, answers, submittedAt: new Date() };
 
-            // replace any previous submission for same test & student
             data.submissions = data.submissions.filter(s => !(s.testId === submission.testId && s.studentId === submission.studentId));
             data.submissions.push(submission);
 
-            // show message depending on auto/manual
             if(autoSubmit){
                 const note = document.getElementById('timeExpiredNote');
-                if(note){
-                    note.style.display = 'block';
-                    note.textContent = "Time's up — the test was automatically submitted.";
-                }
+                if(note){ note.style.display = 'block'; note.textContent = "Time's up — the test was automatically submitted."; }
                 alert("Time is up. Your answers were automatically submitted.");
             } else {
                 alert('Test submitted successfully!');
             }
 
-            // Reset timer UI and inputs state
             timeExpired = false;
             const timerElement = document.getElementById('testTimer');
             const timerTime = document.getElementById('testTimerTime');
@@ -1686,9 +1659,10 @@
             timerTime.textContent = '0:00';
             setTestInputsDisabled(true);
 
+            saveData();
             showStudentDashboard();
             updateDashboardStats();
-            renderOverview(); // update chart as submissions changed
+            renderOverview();
         }
 
         function reviewBeforeSubmit(){
@@ -1696,15 +1670,10 @@
             alert('Scroll through your answers. When you are ready click "Submit Test".');
         }
 
-        // REVIEW display: group MC then long answers with section headers (keeps original indices)
         function reviewTest(testId){
             const test = data.tests.find(t => t.id === testId);
             const submission = data.submissions.find(s => s.testId === testId && s.studentId === currentUser.id);
-            if(!submission){
-                alert('No submission found for this test.');
-                return;
-            }
-
+            if(!submission){ alert('No submission found for this test.'); return; }
             document.getElementById('reviewTitle').textContent = `${test.name} - Review`;
             document.getElementById('reviewTestTitle').textContent = test.name;
 
@@ -1725,14 +1694,11 @@
             showReviewInterface();
         }
 
-        // renderReviewQuestions now groups MC then Long with section headers
         function renderReviewQuestions(submission, test){
             const container = document.getElementById('reviewQuestions');
             if(!submission || !test) { container.innerHTML = `<p class="small-muted">No submission found.</p>`; return; }
-
             const mcAnswers = submission.answers.filter(a => a.type === 'multiple-choice');
             const longAnswers = submission.answers.filter(a => a.type === 'long-answer');
-
             const parts = [];
 
             if(mcAnswers.length > 0){
@@ -1869,10 +1835,9 @@
             const test = data.tests.find(t => t.id === testId);
             const student = data.students.find(s => s.id === studentId) || { name: '' };
             const submission = data.submissions.find(s => s.testId === testId && s.studentId === studentId);
-            let content = `<div><strong>${escapeHtml(student.name)} (${escapeHtml(studentId)})</strong><br><span class="small-muted">${escapeHtml(test.name)}</span></div><div style="margin-top:1rem">`;
+            let content = `<div><strong>${escapeHtml(student.name)} (${escapeHtml(studentId)})</strong><br><span class="small-muted">${escapeHtml(test ? test.name : '')}</span></div><div style="margin-top:1rem">`;
             if(!submission) content += `<p class="small-muted">Student has not started the test.</p>`;
             else {
-                // group MC then Long
                 const mcAnswers = submission.answers.filter(a => a.type === 'multiple-choice');
                 const longAnswers = submission.answers.filter(a => a.type === 'long-answer');
 
@@ -1942,9 +1907,20 @@
         }
         function openPromoModal(){ document.getElementById('promoText').textContent = promoCopy; openModal('promoModal'); }
 
-        // Initialize app
+        // Render everything useful
+        function renderAll(){
+            renderCategoryOptions();
+            renderCategoriesPanel();
+            renderTestsTable();
+            renderStudentsTable();
+            renderQuestionsTable();
+            renderReviewsContainer();
+            renderOverview();
+        }
+
+        // Initialize when page loads
         window.addEventListener('load', () => {
-            initializeData();
+            initializeApp();
             showLoginScreen();
         });
     </script>
