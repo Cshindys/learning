@@ -1,9 +1,12 @@
 **📚 ICT Test System**
+
 **✨ Overview**
-The ICT Test System is designed to provide an interactive and engaging platform for students to learn Information and Communication Technology concepts. 
-It combines structured learning materials, quizzes, and multimedia resources to enhance understanding and retention. 🎓💻
+
+The ICT Test System is designed to provide an interactive and engaging platform for students to learn Information and Communication Technology concepts. 🎓
+It combines structured learning materials, quizzes, and multimedia resources to enhance understanding and retention. 💻
 
 **🌟 Features**
+
 ✅ Interactive Quizzes
 - Test your knowledge with multiple-choice and short-answer questions.
 
