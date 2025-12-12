@@ -523,70 +523,85 @@
         </div>
     </div>
 
-    <!-- Question Modal (create / edit) -->
-    <div id="questionModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title" id="questionModalTitle">Add Question</div>
-                <button class="modal-close" onclick="closeModal('questionModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="questionForm">
+ <!-- Question Modal (create / edit) -->
+<div id="questionModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="modal-title" id="questionModalTitle">Add Question</div>
+            <button class="modal-close" onclick="closeModal('questionModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="questionForm">
+                <!-- Level Selection -->
+                <div class="form-group">
+                    <label class="form-label">Difficulty Level</label>
+                    <select id="questionLevel" class="form-control" required>
+                        <option value="">Select difficulty</option>
+                        <option value="1">★ (Easy)</option>
+                        <option value="2">★★ (Medium)</option>
+                        <option value="3">★★★ (Difficult)</option>
+                    </select>
+                </div>
+                <!-- Question Type -->
+                <div class="form-group">
+                    <label class="form-label">Question Type</label>
+                    <select id="questionType" class="form-control" onchange="toggleQuestionType()" required>
+                        <option value="multiple-choice">Multiple Choice</option>
+                        <option value="long-answer">Long Answer</option>
+                    </select>
+                </div>
+                <!-- Question Text -->
+                <div class="form-group">
+                    <label class="form-label">Question Text</label>
+                    <textarea id="questionText" class="form-control" rows="3" required></textarea>
+                </div>
+
+                <!-- Multiple Choice Options -->
+                <div id="mcOptions">
                     <div class="form-group">
-                        <label class="form-label">Question Type</label>
-                        <select id="questionType" class="form-control" onchange="toggleQuestionType()" required>
-                            <option value="multiple-choice">Multiple Choice</option>
-                            <option value="long-answer">Long Answer</option>
+                        <label class="form-label">Option A</label>
+                        <input type="text" id="optionA" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Option B</label>
+                        <input type="text" id="optionB" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Option C</label>
+                        <input type="text" id="optionC" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Option D</label>
+                        <input type="text" id="optionD" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Correct Answer</label>
+                        <select id="correctAnswer" class="form-control">
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Question Text</label>
-                        <textarea id="questionText" class="form-control" rows="3" required></textarea>
-                    </div>
+                </div>
 
-                    <div id="mcOptions">
-                        <div class="form-group">
-                            <label class="form-label">Option A</label>
-                            <input type="text" id="optionA" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Option B</label>
-                            <input type="text" id="optionB" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Option C</label>
-                            <input type="text" id="optionC" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Option D</label>
-                            <input type="text" id="optionD" class="form-control" />
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Correct Answer</label>
-                            <select id="correctAnswer" class="form-control">
-                                <option value="A">A</option>
-                                <option value="B">B</option>
-                                <option value="C">C</option>
-                                <option value="D">D</option>
-                            </select>
-                        </div>
+                <!-- Categories -->
+                <div class="form-group">
+                    <label class="form-label">Categories</label>
+                    <div id="categoriesContainer" class="checkbox-group">
+                        <!-- dynamically rendered -->
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Categories</label>
-                        <div id="categoriesContainer" class="checkbox-group">
-                            <!-- dynamically rendered -->
-                        </div>
-                        <div class="mt-2 small-muted">Assign one or more categories to this question.</div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" onclick="closeModal('questionModal')">Cancel</button>
-                <button class="btn btn-primary" onclick="saveQuestion()">Save Question</button>
-            </div>
+                    <div class="mt-2 small-muted">Assign one or more categories to this question.</div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('questionModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveQuestion()">Save Question</button>
         </div>
     </div>
+</div>
+
 
     <!-- Assign Test Modal -->
     <div id="assignTestModal" class="modal">
