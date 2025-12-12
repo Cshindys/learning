@@ -19,3 +19,11 @@ It combines structured learning materials, quizzes, and multimedia resources to 
 📖 Dedicated Learning Pages per Chapter **(Maybe)**
 - Each chapter includes a learning page with summaries, key points, and resources before attempting quizzes.
 
+📊 Difficulty Levels **(To be Work On)**
+- Questions can be classified into Easy, Medium, and Difficult categories for better learning progression.
+
+📂 Admin Excel Import/Export **(Maybe)**
+- Admins can export the question database to Excel for review and reporting.
+- Admins can import questions from Excel directly into the system for quick updates.
+
+
