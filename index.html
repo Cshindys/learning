@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Learning Management System</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Login Screen -->
+  <div id="loginScreen" class="login-hero">
+    <div class="login-shell">
+      <!-- Left: Form -->
+      <div class="login-left">
+        <header class="brand">
+          <div class="brand-mark" aria-hidden="true">📘</div>
+          <div class="brand-name">EducateWise</div>
+        </header>
+
+        <h1 class="welcome-title">WELCOME BACK!</h1>
+
+        <div class="tabs login-tabs" role="tablist" aria-label="Login type">
+          <button class="tab active" onclick="switchLoginTab('admin')" role="tab" aria-selected="true">Admin</button>
+          <button class="tab" onclick="switchLoginTab('student')" role="tab" aria-selected="false">Student</button>
+        </div>
+
+        <!-- Admin Login -->
+        <div id="adminLogin" class="tab-content active">
+          <form onsubmit="login('admin', event)" aria-label="Admin login">
+            <div class="form-group">
+              <label class="form-label" for="adminUsernameInput">Username</label>
+              <div class="input-shell">
+                <input id="adminUsernameInput" type="text" class="form-control input-pill" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="adminPasswordInput">Password</label>
+              <div class="input-shell with-eye">
+                <input id="adminPasswordInput" type="password" data-show="0" class="form-control input-pill" required />
+                <button type="button" id="adminPwToggle" class="eye-btn" onclick="toggleLoginPassword('admin')" aria-label="Show password">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" stroke-width="1.5"/><circle cx="12" cy="12" r="3" stroke-width="1.5"/></svg>
+                </button>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-hero" type="submit">Sign In</button>
+          </form>
+        </div>
+
+        <!-- Student Login -->
+        <div id="studentLogin" class="tab-content" aria-hidden="true">
+          <form onsubmit="login('student', event)" aria-label="Student login">
+            <div class="form-group">
+              <label class="form-label" for="studentIdInput">Username</label>
+              <div class="input-shell">
+                <input id="studentIdInput" type="text" class="form-control input-pill" required />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="studentPasswordInput">Password</label>
+              <div class="input-shell with-eye">
+                <input id="studentPasswordInput" type="password" data-show="0" class="form-control input-pill" required />
+                <button type="button" id="studentPwToggle" class="eye-btn" onclick="toggleLoginPassword('student')" aria-label="Show password">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" stroke-width="1.5"/><circle cx="12" cy="12" r="3" stroke-width="1.5"/></svg>
+                </button>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-hero" type="submit">Sign In</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Right: Illustration -->
+      <div class="login-right">
+        <div class="illustration">
+          <img src="https://images.unsplash.com/photo-1554774853-b415df9eeb92?q=80&w=1200&auto=format&fit=crop" alt="Learning illustration" />
+          <div class="shelf s1"></div>
+          <div class="shelf s2"></div>
+          <div class="shelf s3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard -->
+  <div id="adminDashboard" class="hidden" aria-label="Admin dashboard">
+    <div class="header" role="banner">
+      <div class="header-content">
+        <div class="logo">Learning Management System</div>
+        <div class="user-info">
+          <span>Welcome, Admin</span>
+          <span id="remoteStatus" class="small-muted"></span>
+<button class="btn btn-outline btn-sm" onclick="forceRemoteSync()" title="Reload data from Supabase">Force Sync</button>
+          <button class="btn btn-outline" onclick="logout()">Logout</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="tabs" role="tablist" aria-label="Admin tabs">
+        <button class="tab" data-tab="overview" onclick="switchAdminTab('overview')">Overview</button>
+        <button class="tab" data-tab="tests" onclick="switchAdminTab('tests')">Test Management</button>
+        <button class="tab" data-tab="students" onclick="switchAdminTab('students')">Student Management</button>
+        <button class="tab" data-tab="reviews" onclick="switchAdminTab('reviews')">Long Question Review</button>
+        <button class="tab active" data-tab="questions" onclick="switchAdminTab('questions')">Question Database</button>
+      </div>
+
+      <!-- Overview Tab -->
+      <div id="overviewTab" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem">
+              <div>
+                <div class="card-title">Overview</div>
+                <p class="small-muted">Unique student attempts per test</p>
+              </div>
+              <div style="display:flex;gap:.5rem;align-items:center">
+                <button class="btn btn-primary" onclick="renderOverview()">Refresh</button>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="display:flex;gap:1rem;flex-wrap:wrap">
+              <div style="flex:1;min-width:320px;min-height:260px">
+                <canvas id="overviewChartCanvas" width="600" height="300" aria-label="Attempts per test" role="img"></canvas>
+              </div>
+              <div style="flex:1;min-width:220px">
+                <div class="dashboard-stats" style="margin:0">
+                  <div class="stat-card">
+                    <div class="stat-number" id="ov-totalTests">0</div>
+                    <div class="stat-label">Total Tests</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-number" id="ov-totalStudents">0</div>
+                    <div class="stat-label">Total Students</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-number" id="ov-totalQuestions">0</div>
+                    <div class="stat-label">Total Questions</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-number" id="ov-pendingReviews">0</div>
+                    <div class="stat-label">Pending Reviews</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="small-muted" style="margin-top:.75rem">Bar chart shows number of unique students who submitted each test. Tests with zero attempts are included.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Test Management Tab -->
+      <div id="testsTab" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <div style="display:flex;justify-content:flex-start;align-items:center">
+              <div>
+                <div class="card-title">Test Management</div>
+                <p class="small-muted">Create and manage tests</p>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary create-test-button" onclick="openTestModal()">Create New Test</button>
+
+          <div class="card-body">
+            <div id="testsTable"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Student Management Tab -->
+      <div id="studentsTab" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div class="card-title">Student Management</div>
+                <p class="small-muted">Add, remove, and manage student accounts</p>
+              </div>
+              <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+                <button class="btn btn-primary" onclick="openStudentModal()">Add Student</button>
+                <button class="btn btn-outline" onclick="exportStudentsCSV()">Export Students (CSV)</button>
+                <button class="btn btn-outline" onclick="document.getElementById('importStudentsCSVInput').click()">Import Students (CSV)</button>
+                <input id="importStudentsCSVInput" type="file" accept=".csv" class="hidden" onchange="importStudentsCSV(event)" />
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="studentsTable"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Long Question Review Tab -->
+      <div id="reviewsTab" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Long Question Review</div>
+            <p class="small-muted">Review and grade student long answers</p>
+          </div>
+          <div class="card-body">
+            <div id="reviewsContainer"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Question Database Tab -->
+      <div id="questionsTab" class="tab-content active">
+        <div class="card">
+          <div class="card-header">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
+              <div>
+                <div class="card-title">Question Database</div>
+              </div>
+              <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+                <button class="btn btn-primary" onclick="openQuestionModal()">Question</button>
+                <button class="btn btn-outline" onclick="openAddCategoryModal()">Category</button>
+
+                <!-- Export / Import Questions -->
+                <button class="btn btn-outline" onclick="exportQuestionsCSV()">Export (CSV)</button>
+                <button class="btn btn-outline" onclick="document.getElementById('importQuestionsCSVInput').click()">Import (CSV)</button>
+                <input id="importQuestionsCSVInput" type="file" accept=".csv" class="hidden" onchange="importQuestionsCSV(event)" />
+
+                <!-- Backup / Restore full app data -->
+                <button class="btn btn-outline" onclick="downloadDataBackup()">Backup (JSON)</button>
+                <button class="btn btn-outline" onclick="document.getElementById('importBackupInput').click()">Restore (JSON)</button>
+                <input id="importBackupInput" type="file" accept=".json" class="hidden" onchange="importDataBackup(event)" />
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="filter-bar">
+              <div class="filter-row">
+                <div class="form-group chips-wrapper" style="margin-bottom:0;flex:1 1 auto">
+                  <div id="categoryChips" class="chips chips-inline"></div>
+                </div>
+              </div>
+
+              <div class="filter-row">
+                <div class="form-group" style="margin-bottom:0;flex:1 1 100%">
+                  <input type="text" id="questionSearch" class="form-control" placeholder="Search ..." onkeyup="filterQuestions()" />
+                </div>
+              </div>
+            </div>
+
+            <div style="margin:.75rem 0">
+              <div class="small-muted" style="margin-bottom:.35rem">Categories</div>
+              <div id="categoriesList"></div>
+            </div>
+
+            <div id="questionsTable"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Student Dashboard -->
+  <div id="studentDashboard" class="hidden" aria-label="Student dashboard">
+    <div class="header">
+      <div class="header-content">
+        <div class="logo">Learning Management System</div>
+        <div class="user-info">
+          <span id="studentWelcome">Welcome, Student</span>
+          <button class="btn btn-outline" onclick="logout()">Logout</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="tabs" role="tablist" aria-label="Student tabs">
+        <button class="tab" data-tab="studentTests" onclick="switchStudentTab('studentTests')">Available Tests</button>
+        <button class="tab" data-tab="studentOverview" onclick="switchStudentTab('studentOverview')">My Performance</button>
+      </div>
+
+      <div id="studentTestsTab" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Available Tests</div>
+            <p class="small-muted">Tests assigned to you</p>
+          </div>
+          <div class="card-body">
+            <div id="studentTestsTable"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="studentOverviewTab" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div class="card-title">My Performance</div>
+                <p class="small-muted">Your scores across tests</p>
+              </div>
+              <button class="btn btn-primary" onclick="renderStudentOverview()">Refresh</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem">
+              <div style="min-height:260px">
+                <canvas id="studentLineChart" width="600" height="300" aria-label="Scores over time" role="img"></canvas>
+              </div>
+              <div style="min-height:260px">
+                <canvas id="studentBarChart" width="600" height="300" aria-label="Correct by type" role="img"></canvas>
+              </div>
+            </div>
+            <div class="small-muted mt-2" id="studentOverviewStats"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Interface -->
+  <div id="testInterface" class="hidden" aria-live="polite">
+    <div id="testTimer" class="timer" aria-live="polite" role="status">
+      <span class="label">Time left</span>
+      <span class="time" id="testTimerTime">0:00</span>
+    </div>
+    <div class="header">
+      <div class="header-content">
+        <div class="logo">Learning Management System</div>
+        <div class="user-info">
+          <span id="testTitle">Test in Progress</span>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <div id="testQuestions"></div>
+      <div id="testActions" style="margin-top:1.25rem;display:flex;justify-content:center;align-items:center;gap:1rem">
+        <button id="submitTestBtn" class="btn btn-danger btn-submit-large" onclick="submitTest(false)">Submit Test</button>
+        <button class="btn btn-outline" onclick="reviewBeforeSubmit()">Review Answers</button>
+      </div>
+      <div id="timeExpiredNote" style="margin-top:.75rem;text-align:center;color:var(--danger-color);display:none">Time's up — the test was automatically submitted and you can no longer change answers.</div>
+    </div>
+  </div>
+
+  <!-- Review Interface -->
+  <div id="reviewInterface" class="hidden">
+    <div class="header">
+      <div class="header-content">
+        <div class="logo">Test Management System</div>
+        <div class="user-info">
+          <span id="reviewTitle">Test Review</span>
+          <button class="btn btn-outline" onclick="backToStudentDashboard()">Back to Tests</button>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title" id="reviewTestTitle">Test Review</div>
+          <div id="reviewScore" class="small-muted"></div>
+        </div>
+        <div class="card-body">
+          <div id="reviewQuestions"></div>
+          <div class="text-center" style="margin-top:.75rem">
+            <button class="btn btn-outline" onclick="backToStudentDashboard()">Back to Tests</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <div id="assignTestModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">Assign Test to Students</div>
+        <button class="modal-close" onclick="closeModal('assignTestModal')" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="small-muted">Select students to assign this test:</p>
+        <div id="studentSelection" style="max-height:300px; overflow:auto; padding-top:.5rem"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('assignTestModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="assignTestToStudents()">Assign</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="resultsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="resultsModalTitle">Test Results</div>
+        <button class="modal-close" onclick="closeModal('resultsModal')" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body" id="resultsModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('resultsModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="studentResultModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="studentResultModalTitle">Student Result</div>
+        <button class="modal-close" onclick="closeModal('studentResultModal')" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body" id="studentResultModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('studentResultModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create New Test Modal (prettified) -->
+  <div id="testModal" class="modal">
+    <div class="modal-content fancy-modal">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="modal-icon" aria-hidden="true">📝</span>
+          <div>
+            Create New Test
+            <div class="modal-subtitle small-muted">Name your test, set duration, and choose questions.</div>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeModal('testModal')" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <form id="testForm" onsubmit="event.preventDefault(); saveTest();">
+          <!-- Basic Info -->
+          <div class="section-card">
+            <div class="section-header">
+              <strong>Basic Information</strong>
+            </div>
+            <div class="form-row two-col">
+              <div class="form-group">
+                <label class="form-label" for="testName">Test Name</label>
+                <input type="text" id="testName" class="form-control input-pill" placeholder="e.g., Final Exam (Semester 1)" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="testDuration">Duration (minutes)</label>
+                <input type="number" id="testDuration" class="form-control input-pill" min="1" placeholder="60" required />
+              </div>
+            </div>
+          </div>
+
+          <!-- Question Selection -->
+          <div class="section-card">
+            <div class="section-header">
+              <strong>Select Questions from Database</strong>
+            </div>
+
+            <div class="filter-bar">
+              <div class="form-row two-col">
+                <select id="modalCategoryFilter" class="form-control input-pill" onchange="filterModalQuestions()">
+                  <option value="">All Categories</option>
+                </select>
+                <input type="text" id="modalQuestionSearch" class="form-control input-pill" placeholder="Search questions..." onkeyup="filterModalQuestions()" />
+              </div>
+            </div>
+
+            <div id="questionSelection" class="question-selection-list"></div>
+
+            <div class="mt-2">
+              <strong>Selected Questions: <span id="selectedCount">0</span></strong>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline btn-compact" onclick="closeModal('testModal')">Cancel</button>
+        <button class="btn btn-primary btn-compact" onclick="saveTest()">Create Test</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Category Modal (prettified) -->
+  <div id="addCategoryModal" class="modal">
+    <div class="modal-content fancy-modal">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="modal-icon" aria-hidden="true">🏷️</span>
+          <div>
+            Add Category
+            <div class="modal-subtitle small-muted">Create a category to organize your question bank.</div>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeModal('addCategoryModal')" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addCategoryForm" onsubmit="submitAddCategory(event)">
+          <div class="form-group">
+            <label class="form-label" for="newCategoryInputModal">Category name</label>
+            <div class="input-shell with-left-icon">
+              <span class="left-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M3 7a4 4 0 0 1 4-4h5.5a2 2 0 0 1 1.4.6l5.5 5.5a2 2 0 0 1 .6 1.4V17a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7Z"/>
+                  <path d="M7 7h5"/>
+                </svg>
+              </span>
+              <input id="newCategoryInputModal" type="text" class="form-control input-pill pretty-input" placeholder="e.g., Algorithms" required maxlength="40" />
+            </div>
+            <div class="hint-row">
+              <small id="catCharCount" class="char-count"></small>
+            </div>
+          </div>
+          <div class="small-muted">The new category will appear in filters and question categories.</div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('addCategoryModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitAddCategory()">Add Category</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Question Modal (ADD/EDIT, prettified) -->
+  <div id="questionModal" class="modal">
+    <div class="modal-content fancy-modal">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="modal-icon" aria-hidden="true">❓</span>
+          <div>
+            <span id="questionModalTitle">Add Question</span>
+            <div class="modal-subtitle small-muted">Create rich questions with options, images, and code.</div>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeModal('questionModal')" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <form id="questionForm" onsubmit="event.preventDefault(); saveQuestion();">
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label class="form-label" for="questionType">Type</label>
+              <select id="questionType" class="form-control input-pill" onchange="toggleQuestionType()">
+                <option value="multiple-choice">Multiple Choice</option>
+                <option value="long-answer">Long Answer</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="questionDifficulty">Difficulty</label>
+              <select id="questionDifficulty" class="form-control input-pill">
+                <option value="easy">Easy</option>
+                <option value="medium" selected>Medium</option>
+                <option value="difficult">Difficult</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="questionText">Question</label>
+            <textarea id="questionText" class="form-control input-pill" rows="3" placeholder="Type Here..." required></textarea>
+          </div>
+
+          <div id="mcOptions" class="section-card">
+            <div class="section-header">
+              <strong>Multiple Choice Options</strong>
+              <span class="small-muted">Provide four options and the correct answer.</span>
+            </div>
+            <div class="form-row two-col">
+              <input id="optionA" type="text" class="form-control input-pill" placeholder="Option A" />
+              <input id="optionB" type="text" class="form-control input-pill" placeholder="Option B" />
+              <input id="optionC" type="text" class="form-control input-pill" placeholder="Option C" />
+              <input id="optionD" type="text" class="form-control input-pill" placeholder="Option D" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="correctAnswer">Correct Answer</label>
+              <select id="correctAnswer" class="form-control input-pill">
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-header">
+              <strong>Metadata</strong>
+            </div>
+            <div class="form-row two-col">
+              <div class="form-group">
+                <label class="form-label" for="questionReference">Reference</label>
+                <input id="questionReference" type="text" class="form-control input-pill" placeholder="e.g., ALG100" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Categories</label>
+                <div id="categoriesContainer" class="pill-checkboxes"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-header">
+              <strong>Attachments</strong>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Image</label>
+              <div id="imageDropZone" class="drop-zone pretty-drop"
+                   ondragover="handleDropZoneDragOver(event)"
+                   ondragleave="handleDropZoneDragLeave(event)"
+                   ondrop="handleDropZoneDrop(event)">
+                <div class="dz-inner">
+                  <div class="dz-icon">🖼️</div>
+                  <div>
+                    <div class="dz-title">Click or drop an image</div>
+                  </div>
+                </div>
+                <input id="questionImageFile" type="file" accept="image/*" onchange="handleImageFileInput(event)" />
+              </div>
+              <img id="imagePreview" class="question-image hidden" alt="Preview" />
+              <input id="questionImageUrl" type="text" class="form-control input-pill hidden" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="questionCode">Code Snippet</label>
+              <textarea id="questionCode" class="form-control code-input pretty-code" rows="6" placeholder="Optional code..."></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline btn-compact" onclick="closeModal('questionModal')">Cancel</button>
+        <button class="btn btn-primary btn-compact" onclick="saveQuestion()">Save Question</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Student Modal (Add/Edit) -->
+  <div id="studentModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="studentModalTitle">Add Student</div>
+        <button class="modal-close" onclick="closeModal('studentModal')" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="studentForm" onsubmit="event.preventDefault(); saveStudent();">
+          <div class="form-group">
+            <label class="form-label" for="studentId">Student ID</label>
+            <input id="studentId" type="text" class="form-control input-pill" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="studentName">Name</label>
+            <input id="studentName" type="text" class="form-control input-pill" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="studentPassword">Password</label>
+            <input id="studentPassword" type="text" class="form-control input-pill" placeholder="pass123" />
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('studentModal')">Cancel</button>
+        <button class="btn btn-primary" id="studentModalSaveBtn" onclick="saveStudent()">Add Student</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Optional: Supabase CDN and config (fill in to enable shared backend). If left empty, app uses localStorage. -->
+  <!-- Provide these values and add supabaseClient.js + remote-store.js files to enable remote persistence -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Set these to your Supabase project to enable backend persistence (Option B).
+    // Example:
+    window.SUPABASE_URL = "https://dpixvjqevutvqpvxjtgi.supabase.co";
+    window.SUPABASE_ANON_KEY = "sb_publishable_tzg0pE54LVV7RXeDsDnpvw_csh-8cT2";
+    // window.SUPABASE_URL = "";
+    // window.SUPABASE_ANON_KEY = "";
+  </script>
+  <script type="module" src="./supabaseClient.js"></script>
+  <script type="module">
+  import { initSupabase } from './supabaseClient.js';
+  initSupabase();
+</script>
+  <script type="module" src="./remote-store.js"></script>
+ 
+  <!-- App logic -->
+  <script src="app.js"></script>
+</body>
+</html>
